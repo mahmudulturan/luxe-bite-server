@@ -6,7 +6,10 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 //middlewares
-app.use(cors())
+app.use(cors({origin: [
+    'http://localhost:5173',
+],
+credentials: true}))
 app.use(express.json())
 
 
@@ -26,6 +29,21 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+    const allFoodItemsCollection = client.db('luxeBiteDB').collection('allFoodItems');
+
+    //endpoint to get all food items
+    app.get('/all-food-items', async(req, res)=> {
+        const result = await allFoodItemsCollection.find().toArray();
+        res.send(result);
+    })
+
+    //endpoint to get top 6 best selling food items
+    app.get('/top-food', async(req, res)=> {
+        
+        const result = await allFoodItemsCollection.find().sort("sold",'desc').limit(6).toArray();
+        res.send(result);
+    })
 
 
     // Send a ping to confirm a successful connection
