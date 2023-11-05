@@ -31,6 +31,8 @@ async function run() {
     await client.connect();
 
     const allFoodItemsCollection = client.db('luxeBiteDB').collection('allFoodItems');
+    const testimonialsCollection = client.db('luxeBiteDB').collection('testimonial');
+    const chefCollection = client.db('luxeBiteDB').collection('chef');
 
     //endpoint to get all food items
     app.get('/all-food-items', async(req, res)=> {
@@ -42,6 +44,18 @@ async function run() {
     app.get('/top-food', async(req, res)=> {
         
         const result = await allFoodItemsCollection.find().sort("sold",'desc').limit(6).toArray();
+        res.send(result);
+    })
+
+    //endpoint to get all testimonials
+    app.get('/testimonials', async(req, res) => {
+        const result = await testimonialsCollection.find().toArray();
+        res.send(result);
+    })
+
+    //endpoint to get all chef's data
+    app.get('/chef', async(req, res) => {
+        const result = await chefCollection.find().toArray();
         res.send(result);
     })
 
