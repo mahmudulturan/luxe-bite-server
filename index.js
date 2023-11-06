@@ -1,15 +1,17 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
 const port = process.env.PORT || 5000;
 
 //middlewares
-app.use(cors({origin: [
+app.use(cors({
+  origin: [
     'http://localhost:5173',
-],
-credentials: true}))
+  ],
+  credentials: true
+}))
 app.use(express.json())
 
 
@@ -35,28 +37,44 @@ async function run() {
     const chefCollection = client.db('luxeBiteDB').collection('chef');
 
     //endpoint to get all food items
-    app.get('/all-food-items', async(req, res)=> {
-        const result = await allFoodItemsCollection.find().toArray();
-        res.send(result);
+    app.get('/all-food-items', async (req, res) => {
+      const limit = Number(req.query.limit);
+      const skip = req.query.page * limit;
+      const result = await allFoodItemsCollection.find().skip(skip).limit(limit).toArray();
+      const count = await allFoodItemsCollection.estimatedDocumentCount();
+      res.send({ result, count });
     })
 
+    //endpoint to get single food items by id
+    app.get('/all-food-items/:id', async (req, res) => {
+      const id = req.params.id;
+      const cursor = { _id : new ObjectId(id)};
+      const result = await allFoodItemsCollection.findOne(cursor);
+      res.send(result);
+    })
+
+    // app.get('/all-food-count', async(req, res) => {
+    //   const count = await allFoodItemsCollection.estimatedDocumentCount();
+    //   res.send({count})
+    // })
+
     //endpoint to get top 6 best selling food items
-    app.get('/top-food', async(req, res)=> {
-        
-        const result = await allFoodItemsCollection.find().sort("sold",'desc').limit(6).toArray();
-        res.send(result);
+    app.get('/top-food', async (req, res) => {
+
+      const result = await allFoodItemsCollection.find().sort("sold", 'desc').limit(6).toArray();
+      res.send(result);
     })
 
     //endpoint to get all testimonials
-    app.get('/testimonials', async(req, res) => {
-        const result = await testimonialsCollection.find().toArray();
-        res.send(result);
+    app.get('/testimonials', async (req, res) => {
+      const result = await testimonialsCollection.find().toArray();
+      res.send(result);
     })
 
     //endpoint to get all chef's data
-    app.get('/chef', async(req, res) => {
-        const result = await chefCollection.find().toArray();
-        res.send(result);
+    app.get('/chef', async (req, res) => {
+      const result = await chefCollection.find().toArray();
+      res.send(result);
     })
 
 
@@ -71,10 +89,10 @@ async function run() {
 run().catch(console.dir);
 
 
-app.get('/', (req, res)=>{
-    res.send('Luxe Bite Server Is Running')
+app.get('/', (req, res) => {
+  res.send('Luxe Bite Server Is Running')
 })
 
-app.listen(port, ()=> {
-    console.log(`Luxe Bite Server Is Running On Port ${port}`);
+app.listen(port, () => {
+  console.log(`Luxe Bite Server Is Running On Port ${port}`);
 })
