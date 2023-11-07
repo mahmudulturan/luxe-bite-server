@@ -35,6 +35,7 @@ async function run() {
     const foodsCollection = client.db('luxeBiteDB').collection('allFoodItems');
     const testimonialsCollection = client.db('luxeBiteDB').collection('testimonial');
     const chefCollection = client.db('luxeBiteDB').collection('chef');
+    const ordersCollection = client.db('luxeBiteDB').collection('orders');
 
     //endpoint to get all food items
     app.get('/all-food-items', async (req, res) => {
@@ -100,6 +101,21 @@ async function run() {
       const foodData = req.body;
       const result = await foodsCollection.insertOne(foodData)
       res.send(result);
+    })
+
+    //endpoint to post a new orders
+    app.post('/new-orders', async(req, res)=>{
+      const ordersData = req.body.purchaseData;
+      const availableQuantity = req.body.available_quantity;
+      const filter = { _id: new ObjectId(ordersData.food_id)}
+      const updatedData = {
+        $set: {
+          stock_quantity: availableQuantity
+        }
+      }
+      const updatedResult = await foodsCollection.updateOne(filter, updatedData);
+      const result = await ordersCollection.insertOne(ordersData);
+      res.send({result, updatedResult});
     })
 
 
