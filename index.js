@@ -32,7 +32,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const allFoodItemsCollection = client.db('luxeBiteDB').collection('allFoodItems');
+    const foodsCollection = client.db('luxeBiteDB').collection('allFoodItems');
     const testimonialsCollection = client.db('luxeBiteDB').collection('testimonial');
     const chefCollection = client.db('luxeBiteDB').collection('chef');
 
@@ -40,8 +40,8 @@ async function run() {
     app.get('/all-food-items', async (req, res) => {
       const limit = Number(req.query.limit);
       const skip = req.query.page * limit;
-      const result = await allFoodItemsCollection.find().skip(skip).limit(limit).toArray();
-      const count = await allFoodItemsCollection.estimatedDocumentCount();
+      const result = await foodsCollection.find().skip(skip).limit(limit).toArray();
+      const count = await foodsCollection.estimatedDocumentCount();
       res.send({ result, count });
     })
 
@@ -49,7 +49,7 @@ async function run() {
     app.get('/all-food-items/:id', async (req, res) => {
       const id = req.params.id;
       const cursor = { _id : new ObjectId(id)};
-      const result = await allFoodItemsCollection.findOne(cursor);
+      const result = await foodsCollection.findOne(cursor);
       res.send(result);
     })
 
@@ -61,7 +61,7 @@ async function run() {
     //endpoint to get top 6 best selling food items
     app.get('/top-food', async (req, res) => {
 
-      const result = await allFoodItemsCollection.find().sort("sold", 'desc').limit(6).toArray();
+      const result = await foodsCollection.find().sort("sold", 'desc').limit(6).toArray();
       res.send(result);
     })
 
@@ -74,6 +74,14 @@ async function run() {
     //endpoint to get all chef's data
     app.get('/chef', async (req, res) => {
       const result = await chefCollection.find().toArray();
+      res.send(result);
+    })
+
+
+    //endpoint to post a new food items
+    app.post('/add-item', async(req, res)=>{
+      const foodData = req.body;
+      const result = await foodsCollection.insertOne(foodData)
       res.send(result);
     })
 
