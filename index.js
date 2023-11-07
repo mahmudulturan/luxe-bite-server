@@ -59,6 +59,8 @@ async function run() {
 
 
     //jwt related api
+
+    //endpoint to genarate an token and set on cookies
     app.post('/jwt', async (req, res) => {
       const email = req.body;
       const token = jwt.sign(email, process.env.SECRET_KEY, { expiresIn: '1h' })
