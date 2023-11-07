@@ -38,9 +38,14 @@ async function run() {
 
     //endpoint to get all food items
     app.get('/all-food-items', async (req, res) => {
+      const searchKey = req.query.search;
       const limit = Number(req.query.limit);
       const skip = req.query.page * limit;
-      const result = await foodsCollection.find().skip(skip).limit(limit).toArray();
+      let query = {};
+      if(searchKey){
+        query = { food_name: { $regex: new RegExp(searchKey, 'i') }}
+      }
+      const result = await foodsCollection.find(query).skip(skip).limit(limit).toArray();
       const count = await foodsCollection.estimatedDocumentCount();
       res.send({ result, count });
     })
@@ -51,6 +56,18 @@ async function run() {
       const cursor = { _id : new ObjectId(id)};
       const result = await foodsCollection.findOne(cursor);
       res.send(result);
+    })
+
+    //endpoint to get my added food items
+    app.get('/my-added-items', async(req, res)=>{
+      const email = req.query?.email;
+      let query = {}
+      if(email){
+         query = { 'made_by.email': email};
+      }
+      const result = await foodsCollection.find(query).toArray()
+      res.send(result)
+      console.log(email);
     })
 
     // app.get('/all-food-count', async(req, res) => {
