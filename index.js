@@ -101,7 +101,7 @@ async function run() {
     //endpoint to get my added food items
     app.get('/my-added-items', verifyToken, async (req, res) => {
       const email = req.query?.email;
-      if(email == req.user.userEmail){
+      if(email !== req.user.userEmail){
        return res.status(403).send({ message: "Unauthorized Access" })
       }
       let query = {}
@@ -115,7 +115,7 @@ async function run() {
     //endpoint to get my orderd food items
     app.get('/my-ordered-items', verifyToken, async (req, res) => {
       const email = req.query?.email;
-      if(email == req.user.userEmail){
+      if(email !== req.user.userEmail){
         return res.status(403).send({ message: "Unauthorized Access" })
        }
       let query = {}
