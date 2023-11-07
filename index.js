@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 require('dotenv').config()
 const app = express();
 const port = process.env.PORT || 5000;
@@ -13,6 +15,24 @@ app.use(cors({
   credentials: true
 }))
 app.use(express.json())
+app.use(cookieParser())
+
+
+//custom middlewares
+const verifyToken = async (req, res, next) => {
+
+  const token = req.cookies?.token
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized Access" })
+  }
+  jwt.verify(token, process.env.SECRET_KEY, (err, decode) => {
+    if (err) {
+      return res.status(402).send({ message: "Unauthorized Access" })
+    }
+    req.user = decode;
+    next()
+  })
+}
 
 
 
@@ -37,14 +57,31 @@ async function run() {
     const chefCollection = client.db('luxeBiteDB').collection('chef');
     const ordersCollection = client.db('luxeBiteDB').collection('orders');
 
+
+    //jwt related api
+    app.post('/jwt', async (req, res) => {
+      const email = req.body;
+      const token = jwt.sign(email, process.env.SECRET_KEY, { expiresIn: '1h' })
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: false,
+      }).send({ message: "success" })
+    })
+
+
+
+
+
+    //data related api
+
     //endpoint to get all food items
     app.get('/all-food-items', async (req, res) => {
       const searchKey = req.query.search;
       const limit = Number(req.query.limit);
       const skip = req.query.page * limit;
       let query = {};
-      if(searchKey){
-        query = { food_name: { $regex: new RegExp(searchKey, 'i') }}
+      if (searchKey) {
+        query = { food_name: { $regex: new RegExp(searchKey, 'i') } }
       }
       const result = await foodsCollection.find(query).skip(skip).limit(limit).toArray();
       const count = await foodsCollection.estimatedDocumentCount();
@@ -54,32 +91,44 @@ async function run() {
     //endpoint to get single food items by id
     app.get('/all-food-items/:id', async (req, res) => {
       const id = req.params.id;
-      const cursor = { _id : new ObjectId(id)};
+      const cursor = { _id: new ObjectId(id) };
       const result = await foodsCollection.findOne(cursor);
       res.send(result);
     })
 
     //endpoint to get my added food items
-    app.get('/my-added-items', async(req, res)=>{
+    app.get('/my-added-items', verifyToken, async (req, res) => {
       const email = req.query?.email;
+      if(email == req.user.userEmail){
+       return res.status(403).send({ message: "Unauthorized Access" })
+      }
       let query = {}
-      if(email){
-         query = { 'made_by.email': email};
+      if (email) {
+        query = { 'made_by.email': email };
       }
       const result = await foodsCollection.find(query).toArray()
       res.send(result)
-      console.log(email);
     })
 
-    // app.get('/all-food-count', async(req, res) => {
-    //   const count = await allFoodItemsCollection.estimatedDocumentCount();
-    //   res.send({count})
-    // })
+    //endpoint to get my orderd food items
+    app.get('/my-ordered-items', verifyToken, async (req, res) => {
+      const email = req.query?.email;
+      if(email == req.user.userEmail){
+        return res.status(403).send({ message: "Unauthorized Access" })
+       }
+      let query = {}
+      if (email) {
+        query = { 'buyerData.buyerEmail': email };
+      }
+      const result = await ordersCollection.find(query).toArray()
+      res.send(result)
+    })
+
 
     //endpoint to get top 6 best selling food items
     app.get('/top-food', async (req, res) => {
 
-      const result = await foodsCollection.find().sort("sold", 'desc').limit(6).toArray();
+      const result = await foodsCollection.find().limit(6).sort("sold", 'desc').toArray();
       res.send(result);
     })
 
@@ -97,26 +146,61 @@ async function run() {
 
 
     //endpoint to post a new food items
-    app.post('/add-item', async(req, res)=>{
+    app.post('/add-item', async (req, res) => {
       const foodData = req.body;
       const result = await foodsCollection.insertOne(foodData)
       res.send(result);
     })
 
     //endpoint to post a new orders
-    app.post('/new-orders', async(req, res)=>{
+    app.post('/new-orders', async (req, res) => {
       const ordersData = req.body.purchaseData;
       const availableQuantity = req.body.available_quantity;
-      const filter = { _id: new ObjectId(ordersData.food_id)}
+      const filter = { _id: new ObjectId(ordersData.food_id) }
       const updatedData = {
         $set: {
-          stock_quantity: availableQuantity
+          stock_quantity: availableQuantity,
+          sold: ordersData.purchase_quantity
         }
       }
       const updatedResult = await foodsCollection.updateOne(filter, updatedData);
       const result = await ordersCollection.insertOne(ordersData);
-      res.send({result, updatedResult});
+      res.send({ result, updatedResult });
     })
+
+    //endpoint to update an item
+    app.put('/update-item/:id', async (req, res) => {
+      const id = req.params.id;
+      const foodData = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedData = {
+        $set: {
+          food_name: foodData.food_name,
+          food_category: foodData.food_category,
+          food_img: foodData.food_img,
+          price: foodData.price,
+          stock_quantity: foodData.stock_quantity,
+          sold: foodData.sold,
+          made_by: foodData.made_by,
+          food_origin: foodData.food_origin,
+          short_description: foodData.short_description
+        }
+      }
+      const result = await foodsCollection.updateOne(filter, updatedData)
+      res.send(result)
+    })
+
+
+    //endpoint to delete a orders
+    app.delete('/delete-order/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await ordersCollection.deleteOne(query)
+      res.send(result)
+    })
+
+
+
 
 
     // Send a ping to confirm a successful connection
