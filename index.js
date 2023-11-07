@@ -56,19 +56,53 @@ async function run() {
     const testimonialsCollection = client.db('luxeBiteDB').collection('testimonial');
     const chefCollection = client.db('luxeBiteDB').collection('chef');
     const ordersCollection = client.db('luxeBiteDB').collection('orders');
+    const usersCollection = client.db('luxeBiteDB').collection('users');
 
 
     //jwt related api
 
+
+    //endpoint to create user data
+    app.post('/users', async(req, res) => {
+      const userData = req.body;
+      const result = await usersCollection.insertOne(userData);
+      res.send(result)
+    })
+
     //endpoint to genarate an token and set on cookies
     app.post('/jwt', async (req, res) => {
-      const email = req.body;
-      const token = jwt.sign(email, process.env.SECRET_KEY, { expiresIn: '1h' })
+      // const email = req.body;
+      const user = req.body;
+      const email = user.userEmail;
+      const filter = { email: email }
+      const updatedData = {
+        $set: {
+          lastLogin: user.lastLogin,
+          lastLogout: user.lastLogout
+        }
+      }
+      const result = await usersCollection.updateOne(filter, updatedData)
+      const token = jwt.sign({email}, process.env.SECRET_KEY, { expiresIn: '1h' })
       res.cookie("token", token, {
         httpOnly: true,
         secure: false,
-      }).send({ message: "success" })
+      }).send({ message: "success", result })
     })
+
+     //endpoint to clear token from cookies
+    app.post('/delete-cookie', async(req, res) => {
+      const user = req.body;
+      const filter = { email: user.userEmail }
+      const updatedData = {
+        $set: {
+          lastLogin: user.lastLogin,
+          lastLogout: user.lastLogout
+        }
+      }
+      const result = await usersCollection.updateOne(filter, updatedData)
+      res.clearCookie('token', {maxAge: 0}).send({message:'success', result})
+    })
+
 
 
 
