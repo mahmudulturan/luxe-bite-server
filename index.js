@@ -200,12 +200,13 @@ async function run() {
     //endpoint to post a new orders
     app.post('/new-orders', async (req, res) => {
       const ordersData = req.body.purchaseData;
-      const availableQuantity = req.body.available_quantity;
+      const availableQuantity = req.body.updatedProductData.available_quantity;
+      const newSoldQunatity =  req.body.updatedProductData.newSoldQuantity;
       const filter = { _id: new ObjectId(ordersData.food_id) }
       const updatedData = {
         $set: {
           stock_quantity: availableQuantity,
-          sold: ordersData.purchase_quantity
+          sold: newSoldQunatity
         }
       }
       const updatedResult = await foodsCollection.updateOne(filter, updatedData);
