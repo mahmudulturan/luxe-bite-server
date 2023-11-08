@@ -10,7 +10,9 @@ const port = process.env.PORT || 5000;
 //middlewares
 app.use(cors({
   origin: [
-    'http://localhost:5173',
+    'https://luxe-bite.web.app',
+    'https://luxe-bite.firebaseapp.com',
+    // 'http://localhost:5173',
   ],
   credentials: true
 }))
@@ -50,13 +52,14 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const foodsCollection = client.db('luxeBiteDB').collection('allFoodItems');
     const testimonialsCollection = client.db('luxeBiteDB').collection('testimonial');
     const chefCollection = client.db('luxeBiteDB').collection('chef');
     const ordersCollection = client.db('luxeBiteDB').collection('orders');
     const usersCollection = client.db('luxeBiteDB').collection('users');
+    const blogsCollection = client.db('luxeBiteDB').collection('blogs');
 
 
     //jwt related api
@@ -71,7 +74,6 @@ async function run() {
 
     //endpoint to genarate an token and set on cookies
     app.post('/jwt', async (req, res) => {
-      // const email = req.body;
       const user = req.body;
       const email = user.userEmail;
       const filter = { email: email }
@@ -85,7 +87,8 @@ async function run() {
       const token = jwt.sign({email}, process.env.SECRET_KEY, { expiresIn: '1h' })
       res.cookie("token", token, {
         httpOnly: true,
-        secure: false,
+        secure: true,
+        sameSite: 'none',
       }).send({ message: "success", result })
     })
 
@@ -135,7 +138,7 @@ async function run() {
     //endpoint to get my added food items
     app.get('/my-added-items', verifyToken, async (req, res) => {
       const email = req.query?.email;
-      if(email !== req.user.userEmail){
+      if(email !== req.user.email){
        return res.status(403).send({ message: "Unauthorized Access" })
       }
       let query = {}
@@ -149,7 +152,7 @@ async function run() {
     //endpoint to get my orderd food items
     app.get('/my-ordered-items', verifyToken, async (req, res) => {
       const email = req.query?.email;
-      if(email !== req.user.userEmail){
+      if(email !== req.user.email){
         return res.status(403).send({ message: "Unauthorized Access" })
        }
       let query = {}
@@ -178,6 +181,12 @@ async function run() {
     app.get('/chef', async (req, res) => {
       const result = await chefCollection.find().toArray();
       res.send(result);
+    })
+
+    //endpoint to get all blogs data
+    app.get('/blogs' , async(req, res)=>{
+      const result = await blogsCollection.find().toArray();
+      res.send(result)
     })
 
 
@@ -240,7 +249,7 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
